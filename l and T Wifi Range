@@ -1,0 +1,146 @@
+📌 Project Title: Wi-Fi Range Extender using Raspberry Pi
+✅ i) Problem Statement
+In many industrial and domestic environments, Wi-Fi signals weaken due to physical obstructions and long distances, leading to "dead zones" where connectivity is poor or non-existent. These disruptions affect productivity, remote monitoring, and IIoT communication.
+This project aims to develop a Wi-Fi Range Extender using Raspberry Pi to strengthen and extend Wi-Fi signals in such zones. The device will be low-cost, easy to deploy, and compatible with existing Wi-Fi protocols.
+
+✅ ii) Scope of the Solution
+Extend existing Wi-Fi network coverage to hard-to-reach areas.
+
+Enhance IIoT device connectivity in industrial zones.
+
+Low-cost alternative to commercial Wi-Fi extenders.
+
+Can be configured for dynamic/static IP networking.
+
+Supports remote access and monitoring.
+
+Scalable with multiple Raspberry Pis to create a mesh network.
+
+✅ iii) Required Components
+Hardware:
+Raspberry Pi 3/4 (with built-in Wi-Fi)
+
+Micro SD Card (16GB or above) – for OS installation
+
+USB Wi-Fi Adapter – to provide two Wi-Fi interfaces
+
+Power Supply (5V/3A)
+
+Case with cooling fan (optional but recommended)
+
+Breadboard, LEDs (optional for status indicators)
+
+Software:
+Raspberry Pi OS (Lite or Full)
+
+hostapd – for Access Point functionality
+
+dnsmasq – DHCP and DNS services
+
+iptables – for NAT configuration
+
+VNC/SSH – for remote management
+
+IDEs & Tools:
+Visual Studio Code / Thonny IDE
+
+TinkerCad / Fritzing – for circuit simulation
+
+EasyEDA / KiCAD – for PCB design and Gerber file export
+
+✅ iv) Simulated Circuit (TinkerCad/Fritzing)
+Design:
+
+Power Input → Raspberry Pi
+
+USB Wi-Fi Dongle connected
+
+Optional: LED for status indication (via GPIO 17)
+
+You can simulate the basic GPIO circuit and status LEDs in TinkerCad or Fritzing. Here’s an example Fritzing layout:
+
+Raspberry Pi (represented as Pi GPIO header)
+
+LED (through resistor) on GPIO17
+
+Wi-Fi dongle on USB
+
+(You’ll need to upload the Fritzing file to GitHub or take a screenshot for reports/presentation.)
+
+✅ v) Video Demo
+Record a 1–2 minute video showing:
+
+Raspberry Pi setup and power-on
+
+Connecting to existing Wi-Fi
+
+New Access Point visible to client devices
+
+Internet connectivity through the extended network
+
+Optional ping test for latency comparison
+
+You can upload this to YouTube (unlisted) and link it in your GitHub README.
+
+✅ vi) Gerber File
+Design a simple breakout board if needed, for GPIO LED indicators or USB extension. Use EasyEDA or KiCAD for PCB design and export the Gerber file.
+
+(You can use dummy Gerber content if PCB isn’t required physically, but still needed for submission.)
+
+✅ vii) Code for the Solution
+Here’s a basic shell script and hostapd.conf configuration:
+
+➤ setup_ap.sh
+bash
+Copy
+Edit
+#!/bin/bash
+echo "Setting up Wi-Fi Range Extender"
+
+# Set up interfaces
+sudo apt update
+sudo apt install -y hostapd dnsmasq
+
+# Stop services during config
+sudo systemctl stop hostapd
+sudo systemctl stop dnsmasq
+
+# Static IP for wlan1
+sudo bash -c 'cat > /etc/dhcpcd.conf <<EOF
+interface wlan1
+    static ip_address=192.168.220.1/24
+    nohook wpa_supplicant
+EOF'
+
+# Configure DHCP (dnsmasq)
+sudo bash -c 'cat > /etc/dnsmasq.conf <<EOF
+interface=wlan1
+dhcp-range=192.168.220.10,192.168.220.100,255.255.255.0,24h
+EOF'
+
+# Configure Access Point (hostapd)
+sudo bash -c 'cat > /etc/hostapd/hostapd.conf <<EOF
+interface=wlan1
+ssid=Pi_Extender
+hw_mode=g
+channel=7
+wmm_enabled=0
+auth_algs=1
+wpa=2
+wpa_passphrase=raspberry123
+wpa_key_mgmt=WPA-PSK
+rsn_pairwise=CCMP
+EOF'
+
+sudo sed -i 's|#DAEMON_CONF=""|DAEMON_CONF="/etc/hostapd/hostapd.conf"|' /etc/default/hostapd
+
+# NAT configuration
+sudo bash -c 'iptables -t nat -A POSTROUTING -o wlan0 -j MASQUERADE'
+sudo bash -c 'sh -c "iptables-save > /etc/iptables.ipv4.nat"'
+
+echo 'net.ipv4.ip_forward=1' | sudo tee -a /etc/sysctl.conf
+sudo bash -c 'echo "up iptables-restore < /etc/iptables.ipv4.nat" >> /etc/rc.local'
+
+# Start services
+sudo systemctl start hostapd
+sudo systemctl start dnsmasq
